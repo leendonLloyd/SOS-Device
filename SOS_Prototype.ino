@@ -3,11 +3,14 @@
 //authorizedNumber variable is for Admin use, open for change
 
 #include <SoftwareSerial.h>
+#include <TinyGPS++.h>
 #include <SIM900.h>
 #include <sms.h>
 SMSGSM sms;
 
 #define GSM_Pin ""
+SoftwareSerial gpsSerial(8, 9);
+TinyGPSPlus gps;
 
 const int button = 10;
 const int buzzer = 8;
@@ -23,6 +26,8 @@ void setup()
   Serial.begin(9600);
   Serial.println("Micro_GSM_Project");
   Serial.print("Initializing Serial:");
+  gpsSerial.begin(9600);
+  gpsSerial.listen();
   pinMode(button, INPUT);
   pinMode(buzzer, OUTPUT);
   while (!Serial)
@@ -83,11 +88,33 @@ void loop() {
   }
 }
 
+String getCoordinates() {
+  Serial.println(F("Obtaining GPS data..."));
+  display.println(F("Tracking Location..."));
+  bool coordinatesValid = false;
+  String coordinates = "";
+  gpsSerial.listen();
+  while (!coordinatesValid) {
+    if (gpsSerial.available()) {
+      if (gps.encode(gpsSerial.read())) {
+        if (gps.location.isValid()) {
+          coordinates += String(gps.location.lat(), 6);
+          coordinates += ",";
+          coordinates += String(gps.location.lng(), 6);
+          coordinatesValid = true;
+        }
+        delay(1000);
+      }
+    }
+  }
+  return coordinates;
+}
+
 void activate() {
   Serial.println(buttonState);
   delay(800);
   Serial.println("I'm in dire need of assistance, please send help");
-  sms.SendSMS(recipientNumber,"I'm in dire need of assistance, please send help");
+  sms.SendSMS(recipientNumber,"I'm in dire need of assistance, please send help. http://www.google.com/maps/place/" + coordinates);
   Serial.println("\nRecipient_Number");
   Serial.println(recipientNumber);
   Serial.println("Sender_Number");
